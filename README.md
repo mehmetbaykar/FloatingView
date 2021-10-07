@@ -1,5 +1,7 @@
 # FloatingView
 
+[Demo](./demo.gif)
+
 # Features
 
 1. Support dragging, automatic adsorption, and partial hiding after adsorption
