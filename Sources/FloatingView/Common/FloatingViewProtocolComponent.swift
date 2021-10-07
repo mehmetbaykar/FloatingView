@@ -20,7 +20,7 @@ public enum FloatingAdsorbPriority: Int {
     case verticalHigher
 }
 
-public struct FloatingViewProtocolComponent {
+public class FloatingViewProtocolComponent {
     var isDraggable = true
     var isAutoAdsorb = true
     var minSize = CGSize(width: 50,height: 50)

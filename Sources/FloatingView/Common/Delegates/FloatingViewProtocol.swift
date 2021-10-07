@@ -1,7 +1,7 @@
 import UIKit
 
 public protocol FloatingViewProtocol: NSObjectProtocol {
-    var component: FloatingViewProtocolComponent { get set }
+    var component: FloatingViewProtocolComponent { get }
     var isDraggable: Bool { get set }
     var isAutoAdsorb: Bool { get set }
     var minSize: CGSize { get set }
@@ -12,6 +12,7 @@ public protocol FloatingViewProtocol: NSObjectProtocol {
     var minAdsorbableSpacings: UIEdgeInsets { get set }
     var isAutoPartiallyHide: Bool { get set }
     var partiallyHidePercent: CGFloat { get set }
+    var expandShrinkAnimationDuration: TimeInterval { get set }
     var partiallyHideAnimationDuration: TimeInterval { get set }
     var floatingEdgeInsets: UIEdgeInsets { get set }
 }
@@ -21,12 +22,18 @@ public extension FloatingViewProtocol where Self: FloatingView {
     
     var minSize: CGSize {
         get {return component.minSize }
-        set{component.minSize = newValue }
+        set{
+            component.minSize = newValue
+            self.frame.size = isShrinked ? self.component.minSize : self.component.maxSize
+        }
     }
     
     var maxSize: CGSize {
         get {return component.maxSize }
-        set{component.maxSize = newValue }
+        set{
+            component.maxSize = newValue
+            self.frame.size = isShrinked ? self.component.minSize : self.component.maxSize
+        }
     }
     
     var isDraggable: Bool {
@@ -62,6 +69,11 @@ public extension FloatingViewProtocol where Self: FloatingView {
     var partiallyHidePercent: CGFloat {
         get { return component.partiallyHidePercent }
         set { component.partiallyHidePercent = newValue }
+    }
+    
+    var expandShrinkAnimationDuration: TimeInterval{
+        get { return component.expandShrinkAnimationDuration }
+        set { component.expandShrinkAnimationDuration = newValue }
     }
     
     var partiallyHideAnimationDuration: TimeInterval {

@@ -5,7 +5,7 @@ import UIKit
     @objc optional func floatingViewDidBeginDragging(view:FloatingView)
     @objc optional func floatingViewDidEndDragging(view:FloatingView)
     
-    @objc optional func floatingViewDidMove(view:FloatingView)
+    @objc optional func floatingViewDidMove(view:FloatingView, to point:CGPoint)
     
     @objc optional func floatingViewDidShrink(view:FloatingView)
     

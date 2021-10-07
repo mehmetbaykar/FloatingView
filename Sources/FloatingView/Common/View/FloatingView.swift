@@ -1,7 +1,6 @@
 import UIKit
-import WebKit
 
-open class FloatingView:WKWebView,
+open class FloatingView:UIView,
                         FloatingViewProtocol{
     
     private struct AssociatedKeys {
@@ -10,13 +9,14 @@ open class FloatingView:WKWebView,
         static var floatingDelegateKey = "floatingDelegateKey"
     }
     
-    public var component = FloatingViewProtocolComponent()
+    public let component = FloatingViewProtocolComponent()
     
     deinit{
+        self.delegate = nil
         print("\(self.debugDescription) has been denited")
     }
     
-    public weak var floatingDelegate: FloatingViewDelegate? {
+    public weak var delegate: FloatingViewDelegate? {
         get {
             return objc_getAssociatedObject(self, &AssociatedKeys.floatingDelegateKey) as? FloatingViewDelegate
         }
@@ -48,19 +48,14 @@ open class FloatingView:WKWebView,
     
     public var isShrinked = true{
         didSet{
-//            self.handleFloatingViewTap()
+           self.handleFloatingViewTap()
         }
     }
     
-    public override var isHidden: Bool {
-        didSet{
-            #warning("Todo")
-        }
-    }
+    private var isPartiallyAnimating = false
     
-    public init(origin:CGPoint) {
-        super.init(frame: CGRect(origin: origin, size: self.component.maxSize), configuration: WKWebViewConfiguration())
-  
+    public init() {
+        super.init(frame: CGRect(origin: .zero, size:.zero))
         intialConfigure()
     }
     
@@ -75,18 +70,30 @@ open class FloatingView:WKWebView,
         addFloatingPanGestureRecognizer()
     }
     
+    private func addTapGestureRecognizer() {
+        guard floatingTapGesture == nil else { return }
+        floatingTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleFloatingViewTap))
+        floatingTapGesture?.delegate = self
+        addGestureRecognizer(floatingTapGesture!)
+    }
+    
     private func addFloatingPanGestureRecognizer() {
         guard floatingPanGesture == nil else { return }
         floatingPanGesture = UIPanGestureRecognizer(target: self, action: #selector(handleFloatingViewPanGesture))
+        floatingPanGesture?.delegate = self
         addGestureRecognizer(floatingPanGesture!)
     }
     
+    
+    
     @objc private func handleFloatingViewTap(){
-        let size : CGSize = isShrinked ? self.component.minSize : self.component.maxSize
+        let size : CGSize = isShrinked ? self.minSize : self.maxSize
         
-        UIView.animateSafely(withDuration: self.component.expandShrinkAnimationDuration, options: [.curveLinear]) {
+        UIView.animateSafely(withDuration: self.component.expandShrinkAnimationDuration, options: [.curveLinear], animations: {
             self.frame.size = size
             self.animateToAdsorb()
+        }){ _ in
+            
         }
     }
     
@@ -95,17 +102,17 @@ open class FloatingView:WKWebView,
         
         switch pan.state {
         case .began:
-            floatingDelegate?.floatingViewDidBeginDragging?(view: self)
+            delegate?.floatingViewDidBeginDragging?(view: self)
         case .changed:
             defer {
                 pan.setTranslation(.zero, in: self)
             }
             let translation = pan.translation(in: self)
             modifyOrigin(withTranslation: translation)
-            floatingDelegate?.floatingViewDidMove?(view: self)
+            delegate?.floatingViewDidMove?(view: self,to:translation)
         case .ended:
             animateToAdsorb()
-            floatingDelegate?.floatingViewDidEndDragging?(view: self)
+            delegate?.floatingViewDidEndDragging?(view: self)
         default: break
         }
     }
@@ -200,8 +207,6 @@ open class FloatingView:WKWebView,
     }
     
     
-   private var isPartiallyAnimating = false
-    
     private func animatePartiallyHideView(atEdges edges: [FloatingAdsorbableEdges]) {
         
         
@@ -209,6 +214,7 @@ open class FloatingView:WKWebView,
         guard self.isAutoPartiallyHide,
               !isPartiallyAnimating,
               self.isShrinked else { return }
+        
         isPartiallyAnimating = true
         
         var destinationOrigin = frame.origin
@@ -238,8 +244,14 @@ open class FloatingView:WKWebView,
             self.frame.origin = destinationOrigin
         }) { _ in
             self.isPartiallyAnimating = false
-            self.floatingDelegate?.floatingViewFinishedPartiallyHideAnimation?(view: self)
+            self.delegate?.floatingViewFinishedPartiallyHideAnimation?(view: self)
         }
     }
     
+}
+
+extension FloatingView:UIGestureRecognizerDelegate{
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return false
+    }
 }
