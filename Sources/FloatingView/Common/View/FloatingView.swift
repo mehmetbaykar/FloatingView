@@ -89,7 +89,8 @@ open class FloatingView:UIView,
     @objc private func handleFloatingViewTap(){
         let size : CGSize = isShrinked ? self.minSize : self.maxSize
         
-        UIView.animateSafely(withDuration: self.component.expandShrinkAnimationDuration, options: [.curveLinear], animations: {
+        UIView.animateSafely(withDuration: self.component.expandShrinkAnimationDuration, options: [.curveLinear,
+                                                                                                   .layoutSubviews,], animations: {
             self.frame.size = size
             self.animateToAdsorb()
         }){ _ in
