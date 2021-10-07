@@ -20,15 +20,17 @@ public enum FloatingAdsorbPriority: Int {
     case verticalHigher
 }
 
-public class FloatingViewProtocolComponent {
-    
+public struct FloatingViewProtocolComponent {
     var isDraggable = true
     var isAutoAdsorb = true
+    var minSize = CGSize(width: 50,height: 50)
+    var maxSize = CGSize(width: 200,height: 300)
     var adsorbableEdges: FloatingAdsorbableEdges = [.top, .left, .bottom, .right]
     var adsorbPriority: FloatingAdsorbPriority = .horizontalHigher
     var adsorbAnimationDuration: TimeInterval = 0.3
     var isAutoPartiallyHide = false
     var partiallyHidePercent: CGFloat = 0.5
+    var expandShrinkAnimationDuration: TimeInterval = 0.35
     var partiallyHideAnimationDuration: TimeInterval = 0.3
     var floatingEdgeInsets: UIEdgeInsets = .default
     var minAdsorbableSpacings: UIEdgeInsets?

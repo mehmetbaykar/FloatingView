@@ -1,17 +1,22 @@
 import UIKit
+import WebKit
 
 class FloatingWindow: UIWindow {
     
-    private  let floatingWindowRootViewController: FloatableViewController
+    private  weak var floatingWindowRootViewController: FloatableViewController?
     private  var pointInsideCalled : Bool = true
     
     var statusBarStyle: UIStatusBarStyle = .default {
         didSet {
-            floatingWindowRootViewController.statusBarStyle = statusBarStyle
+            self.floatingWindowRootViewController?.statusBarStyle = statusBarStyle
             UIView.animate(withDuration: 0.35) {
-                self.floatingWindowRootViewController.setNeedsStatusBarAppearanceUpdate()
+                self.floatingWindowRootViewController?.setNeedsStatusBarAppearanceUpdate()
             }
         }
+    }
+    
+    deinit{
+        print("\(self.debugDescription) has been denited")
     }
     
     init(frame: CGRect,
@@ -20,12 +25,14 @@ class FloatingWindow: UIWindow {
         
         self.floatingWindowRootViewController = viewController
         self.statusBarStyle = statusBarStyle
-        self.floatingWindowRootViewController.statusBarStyle = statusBarStyle
         
         super.init(frame: frame)
         self.rootViewController = floatingWindowRootViewController
+   
         self.addSubview(viewController.floatingView)
         self.bringSubviewToFront(viewController.floatingView)
+        
+       
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -35,8 +42,8 @@ class FloatingWindow: UIWindow {
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
         
         for subView in subviews {
-            if subView is FloatingViewProtocol, subView.bounds.contains(subView.convert(point, from: self)) {
-                return super.point(inside: point, with: event)
+            if subView is WKWebView {
+                return subView.hitTest(self.convert(point, to: subView), with: event) != nil
             }
         }
         return false
@@ -45,18 +52,19 @@ class FloatingWindow: UIWindow {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         if self.point(inside: point, with: event) {
             self.pointInsideCalled = true
-            return floatingWindowRootViewController.floatingView
+            return floatingWindowRootViewController?.floatingView
         }
         if pointInsideCalled {
             self.pointInsideCalled = false
-            return  floatingWindowRootViewController.floatingView
+            return  floatingWindowRootViewController?.floatingView
         }
         return nil
     }
     
     
     func resignWindow(){
-        self.floatingWindowRootViewController.floatingView.floatingDelegate = nil
+        self.floatingWindowRootViewController?.floatingView.floatingDelegate = nil
+        self.floatingWindowRootViewController = nil
         self.rootViewController = nil
     }
 }

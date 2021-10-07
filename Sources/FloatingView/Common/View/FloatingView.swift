@@ -1,35 +1,22 @@
 import UIKit
+import WebKit
 
-open class FloatingView:UIView,
+open class FloatingView:WKWebView,
                         FloatingViewProtocol{
     
     private struct AssociatedKeys {
         static var floatingPanGestureKey = "floatingPanGestureKey"
+        static var floatingTapGestureKey = "floatingTapGestureKey"
         static var floatingDelegateKey = "floatingDelegateKey"
     }
     
-    
     public var component = FloatingViewProtocolComponent()
     
-    override public init(frame: CGRect) {
-        super.init(frame: frame)
-        intialConfigure()
+    deinit{
+        print("\(self.debugDescription) has been denited")
     }
     
-    required public init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder)
-        intialConfigure()
-    }
-    
-    private func intialConfigure() {
-        backgroundColor = UIColor.cyan
-        layer.cornerRadius = 5
-        addFloatingPanGestureRecognizer()
-        addTapGestureRecognizer()
-        addSwipeGestureRecognizer()
-    }
-    
-public weak var floatingDelegate: FloatingViewDelegate? {
+    public weak var floatingDelegate: FloatingViewDelegate? {
         get {
             return objc_getAssociatedObject(self, &AssociatedKeys.floatingDelegateKey) as? FloatingViewDelegate
         }
@@ -39,7 +26,7 @@ public weak var floatingDelegate: FloatingViewDelegate? {
         }
     }
     
-    var floatingPanGesture: UIPanGestureRecognizer? {
+    private var floatingPanGesture: UIPanGestureRecognizer? {
         get {
             return objc_getAssociatedObject(self, &AssociatedKeys.floatingPanGestureKey) as? UIPanGestureRecognizer
         }
@@ -49,62 +36,76 @@ public weak var floatingDelegate: FloatingViewDelegate? {
         }
     }
     
-    private var isCollapsed = true
+    private var floatingTapGesture: UITapGestureRecognizer? {
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.floatingTapGestureKey) as? UITapGestureRecognizer
+        }
+        set {
+            guard let newValue = newValue else { return }
+            objc_setAssociatedObject(self, &AssociatedKeys.floatingTapGestureKey, newValue as UITapGestureRecognizer?, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
     
-    func addFloatingPanGestureRecognizer() {
+    public var isShrinked = true{
+        didSet{
+//            self.handleFloatingViewTap()
+        }
+    }
+    
+    public override var isHidden: Bool {
+        didSet{
+            #warning("Todo")
+        }
+    }
+    
+    public init(origin:CGPoint) {
+        super.init(frame: CGRect(origin: origin, size: self.component.maxSize), configuration: WKWebViewConfiguration())
+  
+        intialConfigure()
+    }
+    
+    required public init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        intialConfigure()
+    }
+    
+    private func intialConfigure() {
+        backgroundColor = .cyan
+        layer.cornerRadius = 5
+        addFloatingPanGestureRecognizer()
+    }
+    
+    private func addFloatingPanGestureRecognizer() {
         guard floatingPanGesture == nil else { return }
         floatingPanGesture = UIPanGestureRecognizer(target: self, action: #selector(handleFloatingViewPanGesture))
         addGestureRecognizer(floatingPanGesture!)
     }
     
-    private func addTapGestureRecognizer(){
-        self.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.didTapped)))
-    }
-    
-    
-    private func addSwipeGestureRecognizer(){
-        let swipe = UISwipeGestureRecognizer(target: self, action: #selector(self.didSwipped(swipeGesture:)))
-        swipe.direction = .right
-        swipe.direction = .left
-        self.addGestureRecognizer(swipe)
-    }
-    
-    @objc private func didTapped(){
-        let size : CGSize = isCollapsed ?  CGSize(width: 50, height: 100) : CGSize(width: 150, height: 300)
+    @objc private func handleFloatingViewTap(){
+        let size : CGSize = isShrinked ? self.component.minSize : self.component.maxSize
         
-        UIView.animate(withDuration: 0.3, delay: 0.0, options: [.layoutSubviews,.curveLinear]) {
+        UIView.animateSafely(withDuration: self.component.expandShrinkAnimationDuration, options: [.curveLinear]) {
             self.frame.size = size
-            self.layer.cornerRadius = 5
-            
-            if !self.isCollapsed{
-                self.animateToAdsorb()
-            }
-           
-        } completion: { _ in
-            self.isCollapsed = !self.isCollapsed
+            self.animateToAdsorb()
         }
     }
     
-    @objc private func didSwipped(swipeGesture:UISwipeGestureRecognizer){
-        self.isAutoPartiallyHide = true
-        self.animateToAdsorb()
-    }
     @objc private func handleFloatingViewPanGesture(_ pan: UIPanGestureRecognizer) {
         guard self.isDraggable else { return }
         
         switch pan.state {
         case .began:
-            floatingDelegate?.floatingViewDidBeginDragging(panGestureRecognizer: pan)
+            floatingDelegate?.floatingViewDidBeginDragging?(view: self)
         case .changed:
             defer {
                 pan.setTranslation(.zero, in: self)
             }
             let translation = pan.translation(in: self)
             modifyOrigin(withTranslation: translation)
-            floatingDelegate?.floatingViewDidMove(view: self)
+            floatingDelegate?.floatingViewDidMove?(view: self)
         case .ended:
             animateToAdsorb()
-            floatingDelegate?.floatingViewDidEndDragging(panGestureRecognizer: pan)
+            floatingDelegate?.floatingViewDidEndDragging?(view: self)
         default: break
         }
     }
@@ -119,28 +120,33 @@ public weak var floatingDelegate: FloatingViewDelegate? {
         let tmpOriginX = frame.origin.x + translation.x
         let tmpOriginY = frame.origin.y + translation.y
         
-        // 未到最后仍向右移，未到最左仍向左移
+
         if (tmpOriginX <= maxOriginX && translation.x > 0) || (tmpOriginX >= minOriginX && translation.x < 0) {
             frame.origin.x = tmpOriginX
         }
-        // 未到最下仍向下移，未到最上仍向上移
+        
         if (tmpOriginY <= maxOriginY && translation.y > 0) || (tmpOriginY >= minOriginY && translation.y < 0) {
             frame.origin.y = tmpOriginY
         }
     }
     
-    func animateToAdsorb() {
+    private func animateToAdsorb() {
+        
         guard let superview = superview,
-              self.isAutoAdsorb else {
-                  return
-              }
+              self.isAutoAdsorb,
+              self.floatingEdgeInsets.left + self.floatingEdgeInsets.right + frame.width * 2 <= superview.frame.width,
+              self.floatingEdgeInsets.top + self.floatingEdgeInsets.bottom + frame.height * 2 <= superview.frame.height
+        else { return }
         
         let accessibleCenterX = (superview.frame.width + self.floatingEdgeInsets.left - self.floatingEdgeInsets.right) / 2
         let accessibleCenterY = (superview.frame.height + self.floatingEdgeInsets.top - self.floatingEdgeInsets.bottom) / 2
+        
         let accessibleMinX = self.floatingEdgeInsets.left
-        let accessibleMinY = self.floatingEdgeInsets.top + 40
+        let accessibleMinY = self.floatingEdgeInsets.top
+        
         let accessibleMaxX = superview.bounds.width - self.floatingEdgeInsets.right
         let accessibleMaxY = superview.bounds.height - self.floatingEdgeInsets.bottom
+        
         var destinationOrigin = frame.origin
         var adsorbedEdges: [FloatingAdsorbableEdges] = []
         
@@ -160,17 +166,16 @@ public weak var floatingDelegate: FloatingViewDelegate? {
             adsorbedEdges.append(.right)
         }
         
-        // 须在确定所有可吸附方向后再根据优先级筛选
+    
         switch self.adsorbPriority {
+            
         case .horizontalHigher:
-            // 只有一个方向的时候，不需要再做多余处理
             guard adsorbedEdges.count == 2 else { break }
             if adsorbedEdges.contains(.top) {
                 destinationOrigin.y = max(frame.origin.y, accessibleMinY, 0)
             } else if adsorbedEdges.contains(.bottom) {
                 destinationOrigin.y = min(frame.origin.y, accessibleMaxY - bounds.height, superview.frame.height - bounds.height)
             }
-            // 筛除后供 partiallyHide 使用
             adsorbedEdges = adsorbedEdges.filter { $0 == .left || $0 == .right }
         case .verticalHigher:
             guard adsorbedEdges.count == 2 else { break }
@@ -183,19 +188,33 @@ public weak var floatingDelegate: FloatingViewDelegate? {
         default: break
         }
         
-        guard destinationOrigin != frame.origin else { return }
-        UIView.animate(withDuration: self.adsorbAnimationDuration,delay: 0.0, options:  [.curveLinear], animations: {
-            self.frame.origin = destinationOrigin
-        }) { isFinished in
+        if destinationOrigin != frame.origin {
+            UIView.animateSafely(withDuration: self.adsorbAnimationDuration, options:  [.curveLinear], animations: {
+                self.frame.origin = destinationOrigin
+            }) { _ in
+                self.animatePartiallyHideView(atEdges: adsorbedEdges)
+            }
+        }else{
             self.animatePartiallyHideView(atEdges: adsorbedEdges)
         }
     }
     
+    
+   private var isPartiallyAnimating = false
+    
     private func animatePartiallyHideView(atEdges edges: [FloatingAdsorbableEdges]) {
-        guard self.isAutoPartiallyHide else { return }
+        
+        
+        
+        guard self.isAutoPartiallyHide,
+              !isPartiallyAnimating,
+              self.isShrinked else { return }
+        isPartiallyAnimating = true
         
         var destinationOrigin = frame.origin
+        
         for edge in edges {
+            
             if edge == .top {
                 destinationOrigin.y -= frame.height * self.partiallyHidePercent
             }
@@ -206,18 +225,20 @@ public weak var floatingDelegate: FloatingViewDelegate? {
                 destinationOrigin.y += frame.height * self.partiallyHidePercent
             }
             if edge == .right {
-                destinationOrigin.x += frame.height * self.partiallyHidePercent
+                destinationOrigin.x += frame.width * self.partiallyHidePercent
             }
         }
         
-        guard destinationOrigin != frame.origin else { return }
-        UIView.animate(withDuration: self.partiallyHideAnimationDuration,
-                       delay: 0.0,
+        guard destinationOrigin != frame.origin
+        else { return }
+        
+        UIView.animateSafely(withDuration: self.partiallyHideAnimationDuration,
                        options: [.curveLinear],
                        animations: {
             self.frame.origin = destinationOrigin
-        }) { isFinished in
-            self.floatingDelegate?.floatingViewFinishedPartiallyHideAnimation()
+        }) { _ in
+            self.isPartiallyAnimating = false
+            self.floatingDelegate?.floatingViewFinishedPartiallyHideAnimation?(view: self)
         }
     }
     

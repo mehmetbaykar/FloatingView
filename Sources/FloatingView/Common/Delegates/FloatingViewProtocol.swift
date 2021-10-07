@@ -1,9 +1,11 @@
 import UIKit
 
 public protocol FloatingViewProtocol: NSObjectProtocol {
-    var component: FloatingViewProtocolComponent { get }
+    var component: FloatingViewProtocolComponent { get set }
     var isDraggable: Bool { get set }
     var isAutoAdsorb: Bool { get set }
+    var minSize: CGSize { get set }
+    var maxSize: CGSize { get set }
     var adsorbableEdges: FloatingAdsorbableEdges { get set }
     var adsorbPriority: FloatingAdsorbPriority { get set }
     var adsorbAnimationDuration: TimeInterval { get set }
@@ -14,8 +16,19 @@ public protocol FloatingViewProtocol: NSObjectProtocol {
     var floatingEdgeInsets: UIEdgeInsets { get set }
 }
 
-// MARK: - Default Implement
+// MARK: - Default Implementation
 public extension FloatingViewProtocol where Self: FloatingView {
+    
+    var minSize: CGSize {
+        get {return component.minSize }
+        set{component.minSize = newValue }
+    }
+    
+    var maxSize: CGSize {
+        get {return component.maxSize }
+        set{component.maxSize = newValue }
+    }
+    
     var isDraggable: Bool {
         get { return component.isDraggable }
         set { component.isDraggable = newValue }
