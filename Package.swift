@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "FloatingView",
     platforms: [
-        .iOS(.v11),
+        .iOS(.v9),
     ],
     products: [
         .library(
