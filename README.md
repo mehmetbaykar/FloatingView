@@ -1,6 +1,6 @@
 # FloatingView
 
-[Demo](./demo.gif)
+![Demo](./demo.gif)
 
 # Features
 
