@@ -10,8 +10,8 @@
 
 # Environmental requirements
 
--iOS 9.0+
--Swift 5.5
+- iOS 9.0+
+- Swift 5.5
 
 # Install
 
