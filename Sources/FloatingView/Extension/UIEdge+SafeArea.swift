@@ -1,6 +1,6 @@
 import UIKit
 
-extension UIEdgeInsets{
+public extension UIEdgeInsets{
      static let `default`:UIEdgeInsets = {
          
         guard let window = UIApplication.shared.windows.last
